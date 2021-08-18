@@ -32,48 +32,53 @@ using namespace Panda;
 ToyotaHandler::ToyotaHandler(Panda::Handler* handler) {
 	// TODO: should reorganize this, or have some assertion that handler is valid.
 	this->pandaHandler = handler;
-	
+
 	controls_allowed_prior = false;
 	controls_allowed = false;
+<<<<<<< Updated upstream
 	controls_allowed_delay_counter = 0;
 	
+=======
+
+>>>>>>> Stashed changes
 	decimatorHeartbeat = 0;
 	decimatorControlsAllowed = 0;
 	decimatorLka = 0;
 	decimatorTrackB = 0;
 	decimatorSteer = 0;
 	decimatorAcc = 0;
-	
+
 	counterSteer = 0;
 	counterTrackB = 0;
-	
+
 	// Default HUD:
 	hudLdaAlert = false;
 	hudBarrier = false;
 	hudLeftLane = 2;
 	hudRightLane = 2;
 	hudTwoBeeps = 0;
-	
+
 	// Default Steer:
-	steerTorqueControl = 0.0;
+	// steerTorqueControl = 0.0;
+	steer_angle_cmd = 0.0;
 	steerRequest = false;
-	steerLkaState = 0;
-	
+	// steerLkaState = 0;
+
 	// Default Acceleration:
 	accelerationControl = 0.0;
 	permitBraking = false;
 	releaseStandstill = false;
 	miniCar = false;
 	cancelRequest = false;
-	
+
 	// CAN states:
 	gas_released = false;
 	brake_pressed = false;
-	
+
 	// Start the heartbeats to wait for a command
 	heartBeatSteer = TOYOTA_COMMAND_THREAD_RATE;
 	heartBeatAcceleration = TOYOTA_COMMAND_THREAD_RATE;
-	
+
 	if (pandaHandler != NULL) {
 		pandaHandler->getCan().addObserver(this);
 	}
@@ -96,7 +101,7 @@ void ToyotaHandler::newDataNotification(CanFrame* canFrame) {
 		// cruise_active: if cuirse controller is on in general
 		// cruise state: nonAdaptive if value is 1, 2, 3, 4, 5, 6
 //		car_cruise_ready_for_commands = (cruise_state & 0x08) >> 3;
-		
+
 		if (!gas_released && controls_allowed) {
 			setHudCruiseCancelRequest( true );
 		}
@@ -130,10 +135,10 @@ void ToyotaHandler::newDataNotification(CanFrame* canFrame) {
 //		int cruise_control_state = ((*(unsigned long*)canFrame->data) >> (11+1-4)) & 0x0F;
 ////		printf(" - 921: CRUISE_CONTROL_STATE: %d\n", cruise_control_state);
 //	}
-	
+
 	controls_allowed_prior = controls_allowed;
 	controls_allowed = (cruise_state >= 8) && gas_released && !brake_pressed;
-	
+
 	if (controls_allowed_prior != controls_allowed) {
 		for (std::vector<ToyotaListener*>::iterator it = toyotaObservers.begin();
 			 it != toyotaObservers.end();
@@ -141,37 +146,42 @@ void ToyotaHandler::newDataNotification(CanFrame* canFrame) {
 			(*it)->newControlNotification(this);
 		}
 	}
-	
+
 //	fprintf(stderr, "cruise_state, gas_released, !brake_pressed = %d, %d, %d\n", cruise_state,  gas_released, !brake_pressed);
 }
 
 void ToyotaHandler::entryAction() {
 	std::cout << "In ToyotaHandler::entryAction():" << std::endl;
-	
+
 	std::cout << " - Setting power save to POWER_SAVE_STATUS_DISABLED:" << std::endl;
 	pandaHandler->getUsb().setPowerSaveEnable(POWER_SAVE_STATUS_DISABLED);
-	
+
 	std::cout << " - Setting Safety to SAFETY_TOYOTA" << std::endl;
 	pandaHandler->getUsb().setSafetyMode(SAFETY_TOYOTA);
-	
+
 }
 
 void ToyotaHandler::exitAction() {
 	std::cout << "In ToyotaHandler::exitAction():" << std::endl;
-	
+
 	std::cout << " - Setting Safety to SAFETY_NOOUTPUT:" << std::endl;
 	pandaHandler->getUsb().setSafetyMode(SAFETY_NOOUTPUT);
-	
+
 	std::cout << " - Setting power save to POWER_SAVE_STATUS_ENABLED:" << std::endl;
 	pandaHandler->getUsb().setPowerSaveEnable(POWER_SAVE_STATUS_ENABLED);
-	
+
 }
 
 void ToyotaHandler::doAction() {
+<<<<<<< Updated upstream
 //	usleep(1000000.0/TOYOTA_COMMAND_THREAD_RATE);	// run at 600 Hz
 	
 	auto start = std::chrono::high_resolution_clock::now();
 	
+=======
+	usleep(1000000.0/TOYOTA_COMMAND_THREAD_RATE);	// run at 600 Hz
+
+>>>>>>> Stashed changes
 	// We cannot have integer rollovers here at anytime, so only increase if not already failed
 	if(heartbeatSteeringPass()) {
 		heartBeatSteer++;
@@ -202,7 +212,7 @@ void ToyotaHandler::doAction() {
 		decimatorLka = 0;
 		sendLka();
 	}
-	
+
 	if (decimatorTrackB++ >= TOYOTA_DECIMATOR_MAX_TRACK_B) {	// 40Hz
 		decimatorTrackB = 0;
 		sendTrackB();
@@ -212,7 +222,7 @@ void ToyotaHandler::doAction() {
 		decimatorSteer = 0;
 		sendSteer();
 	}
-	
+
 	if (decimatorAcc++ >= TOYOTA_DECIMATOR_MAX_ACC) {	// 30 Hz
 		decimatorAcc = 0;
 		sendAcc();
@@ -244,7 +254,7 @@ bool ToyotaHandler::heartbeatAccelerationPass() {
 void ToyotaHandler::sendHeartBeat() {
 //	std::cout << "In ToyotaHandler::sendHeartBeat()" << std::endl;
 	pandaHandler->getUsb().sendHeartBeat();
-	
+
 	// Libpanda should probably automatically do the following:
 	pandaHandler->getUsb().getHealth(&health);	// this should live in Panda::PandaHandler
 //	if (health.controls_allowed) {
@@ -255,7 +265,7 @@ void ToyotaHandler::sendHeartBeat() {
 //
 //		controls_allowed = false;
 //	}
-	
+
 //	controls_allowed_prior = health.controls_allowed;
 
 	for (std::vector<ToyotaListener*>::iterator it = toyotaObservers.begin();
@@ -269,19 +279,19 @@ void ToyotaHandler::sendHeartBeat() {
 void ToyotaHandler::sendLka() {
 //	Panda::CanFrame frame = buildLdaAlert(hudLdaAlert || !heartbeatSteeringPass(), hudLeftLane, hudRightLane, hudBarrier);
 	bool hudRepeatedBeepsToSend = hudRepeatedBeeps;
-	
+
 	if ((!heartbeatSteeringPass() || !heartbeatAccelerationPass()) &&
 //		health.controls_allowed ) {
 		controls_allowed ) {
 		hudRepeatedBeepsToSend = true;
 	}
-	
+
 	bool hudLkaAlertToSend = hudLdaAlert;
 //	if (health.controls_allowed && !heartbeatSteeringPass()) {
 	if (controls_allowed && !heartbeatSteeringPass()) {
 		hudLkaAlertToSend = true;
 	}
-	
+
 	Panda::CanFrame frame = buildLkasHud(hudLkaAlertToSend, hudLeftLane, hudRightLane, hudBarrier, hudTwoBeeps, hudRepeatedBeepsToSend);
 //	printf("LKAS_HUD: "); printFrame(frame);
 	pandaHandler->getCan().sendMessage(frame);
@@ -291,7 +301,7 @@ void ToyotaHandler::sendTrackB() {
 	counterTrackB += 2;	// I notice in recorded data that his incrmeents by 2
 	counterTrackB |= 0x80;	// also the MSB is always 1.  perhaps the DBC is wrong?
 	Panda::CanFrame frame = buildTRACK_B_1(counterTrackB);
-	
+
 	//printf("TRACK_B_1: "); printFrame(frame);
 	pandaHandler->getCan().sendMessage(frame);
 }
@@ -303,14 +313,14 @@ void ToyotaHandler::sendSteer() {
 //	if (health.controls_allowed && heartbeatSteeringPass()) {
 	if (controls_allowed && heartbeatSteeringPass()) {
 		steerRequest = true;
-		steerLkaState = 0; // Real LKA steering control data shows this to be 0
-		steerTorqueControlToSend = steerTorqueControl;	// Send the user steer torque
+		//steerLkaState = 0; // Real LKA steering control data shows this to be 0
+		steerTorqueControlToSend = steer_angle_cmd;	// Send the user steer torque
 	} else {
 		steerRequest = false;
 		steerTorqueControlToSend = 0;	// This may not be needed, but is following the same convention as ACC control
 	}
-	
-	Panda::CanFrame frame = buildSteeringLKA( counterSteer++, steerTorqueControlToSend, steerRequest, steerLkaState );
+
+	Panda::CanFrame frame = buildSteeringLKA( counterSteer++, steerTorqueControlToSend, steerRequest, steerRequest2 );
 	//printf("STEERING_LKA at %d: ", (int) steer_torque); printFrame(frame);
 	pandaHandler->getCan().sendMessage(frame);
 }
@@ -335,7 +345,7 @@ void ToyotaHandler::sendAcc() {
 		accelerationControlToSend = 0.0;	// If we send non-0 in this state, cruise control will fault
 		controls_allowed_delay_counter = 0;
 	}
-	
+
 //	// The following will send a cancel request if controls are allowed and the heartbeat fails, but
 //	// I think I prefer the version without this logic.  Leaving here for future discussion
 	bool cancelRequestToSend = cancelRequest;
@@ -351,7 +361,7 @@ void ToyotaHandler::sendAcc() {
 			cancelRequestSpamCount = 0;
 		}
 	}
-		
+
 	Panda::CanFrame frame = buildACC_CONTROL( accelerationControlToSend, permitBraking, releaseStandstill, miniCar, cancelRequestToSend );
 //	fprintf(stderr, "ACC_CONTROL at %02f, ACC_Input at %02f\n", accelerationControlToSend, accelerationControl); //printFrame(frame);
 	pandaHandler->getCan().sendMessage(frame);

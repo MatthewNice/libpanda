@@ -21,6 +21,7 @@
  IS ON AN "AS IS" BASIS, AND THE UNIVERSITY OF CALIFORNIA HAS NO OBLIGATION
  TO PROVIDE MAINTENANCE, SUPPORT, UPDATES, ENHANCEMENTS, OR MODIFICATIONS.
 
+Secondary Author: Matthew Nice
  */
 
 #include "panda/toyota.h"
@@ -32,7 +33,7 @@ using namespace Panda;
 
 CanFrame Panda::buildLkasHud(bool ldaAlert, unsigned char leftLane, unsigned char rightLane, bool barrier, bool twoBeeps, bool repeatedBeeps) {
 	CanFrame frame;
-	
+
 	/* from https://github.com/commaai/opendbc/blob/master/toyota_rav4_2017_pt_generated.dbc
 	 BO_ 1042 LKAS_HUD: 8 XXX
 	 SG_ BARRIERS : 1|2@0+ (1,0) [0|3] "" XXX
@@ -49,7 +50,7 @@ SG_ SET_ME_X0C : 23|8@0+ (1,0) [0|1] "" XXX
 SG_ SET_ME_X2C : 47|8@0+ (1,0) [0|1] "" XXX
 SG_ SET_ME_X38 : 55|8@0+ (1,0) [0|1] "" XXX
 SG_ SET_ME_X02 : 63|8@0+ (1,0) [0|1] "" XXX
-	 
+
 	 BO_ 1042 DS12F03: 8 FCM
 	  SG_ LKAINDI : 7|2@0+ (1,0) [0|0] "" Vector__XXX
 	  SG_ LKAWLSL : 5|2@0+ (1,0) [0|0] "" Vector__XXX
@@ -70,25 +71,25 @@ SG_ SET_ME_X02 : 63|8@0+ (1,0) [0|1] "" XXX
 	  SG_ SWSFLD : 53|3@0+ (1,0) [0|0] "" Vector__XXX
 	  SG_ SWSBUZ : 50|2@0+ (1,0) [0|0] "" Vector__XXX
 	 */
-	
+
 	frame.bus = 0;
 	frame.busTime = 0;
 	frame.dataLength = 8;
 	frame.messageID = 1042;	// LKAS_HUD
 	*((uint64_t*)frame.data) = 0;
-	
+
 	bool BARRIERS = barrier;
 	*((uint64_t*)frame.data) = ((uint64_t)BARRIERS << (1+1-2));
 	char RIGHT_LANE = rightLane;
 	*((uint64_t*)frame.data) |= ((uint64_t)(RIGHT_LANE & 0x03) << (3+1-2));
 	char LEFT_LANE = leftLane;
 	*((uint64_t*)frame.data) |= ((uint64_t)(LEFT_LANE & 0x03) << (5+1-2));
-	
+
 	//SET_ME_X01
 	*((uint64_t*)frame.data) |= ((uint64_t)0x01 << (7+1-2));
 	//SET_ME_X01_2
 	*((uint64_t*)frame.data) |= ((uint64_t)0x01 << (11+1-2));
-	
+
 	bool LDA_ALERT = ldaAlert;
 	*((uint64_t*)frame.data) |= ((uint64_t)LDA_ALERT << (9+1-2));
 	bool TWO_BEEPS = twoBeeps;
@@ -99,7 +100,7 @@ SG_ SET_ME_X02 : 63|8@0+ (1,0) [0|1] "" XXX
 	*((uint64_t*)frame.data) |= ((uint64_t)LDA_MALFUNCTION << (15+1-1));
 	bool REPEATED_BEEPS = repeatedBeeps;
 	*((uint64_t*)frame.data) |= ((uint64_t)REPEATED_BEEPS << (32+1-1));
-	
+
 	//SET_ME_X0C
 	*((uint64_t*)frame.data) |= ((uint64_t)0x0c << (23+1-8));
 	//SET_ME_X2C
@@ -108,9 +109,9 @@ SG_ SET_ME_X02 : 63|8@0+ (1,0) [0|1] "" XXX
 	*((uint64_t*)frame.data) |= ((uint64_t)0x38 << (55+1-8));
 	//SET_ME_X02
 	*((uint64_t*)frame.data) |= ((uint64_t)0x02 << (63+1-8));
-	
-	
-	
+
+
+
 	return frame;
 }
 
@@ -140,21 +141,21 @@ SG_ SET_ME_X02 : 63|8@0+ (1,0) [0|1] "" XXX
 uint8_t Panda::toyotaChecksum(CanFrame& frame)
 {
 	unsigned char newdata[10];
-	
+
 	uint8_t sum = 0;
 	sum += frame.messageID & 0xFF;
 	sum += frame.messageID>>8;
 	//sum += frame.bus;	// I have no idea if this is needed
 	sum += frame.dataLength;
-	
+
 	for (int i = 0; i < frame.dataLength; i++) {
 		sum += frame.data[i];
 	}
 	return sum;
 }
 
-CanFrame Panda::buildSteeringLKA( unsigned char count, int16_t steer_torque, bool steerRequest, unsigned char lkaState ) {
-	
+CanFrame Panda::buildSteeringLKA( unsigned char count, int16_t steer_angle_cmd, bool steerRequest, bool steerRequest2) {
+
 	// max steer_torque: const int TOYOTA_MAX_TORQUE = 1500;       // max torque cmd allowed ever
 	CanFrame frame;
 	/*
@@ -165,32 +166,67 @@ CanFrame Panda::buildSteeringLKA( unsigned char count, int16_t steer_torque, boo
 	 SG_ STEER_TORQUE_CMD : 15|16@0- (1,0) [0|65535] "" XXX
 	 SG_ LKA_STATE : 31|8@0+ (1,0) [0|255] "" XXX
 	 SG_ CHECKSUM : 39|8@0+ (1,0) [0|255] "" XXX
+
+	 BO_ 401 TRACK_B_1: 8 XXX
+	  SG_ TRACKB1_mux M : 7|1@0+ (1,0) [0|0] "" XXX, XXX
+
+	  SG_ COUNTER m1: 6|6@0+ (1,0) [0|255] "" XXX
+	  SG_ REL_ACCEL m1: 15|7@0- (1,0) [-64|63] "" XXX
+	  SG_ SCORE m1: 22|8@0+ (1,0) [0|100] "" XXX
+	  SG_ CHECKSUM m1: 63|8@0+ (1,0) [0|255] "" XXX
+
+		SG_ STEER_REQUEST_2 m0: 0|1@0+ (1,0) [0|1] "" XXX
+		SG_ COUNTER m0: 6|6@0+ (1,0) [0|255] "" XXX
+		SG_ STEER_ANGLE_CMD m0: 15|16@0- (0.0573,0) [-540|540] "" XXX
+	  SG_ STEER_REQUEST m0: 25|1@0+ (1,0) [0|1] "" XXX
+	  SG_ SETME_X3 m0: 29|2@0+ (1,0) [0|3] "" XXX
+		SG_ BIT m0: 30|1@0+ (1,0) [0|1] "" XXX
+	  SG_ PERCENTAGE m0: 39|8@0+ (1,0) [0|255] "" XXX
+	  SG_ SETME_X64 m0: 47|8@0+ (1,0) [0|255] "" XXX
+	  SG_ ANGLE m0: 55|8@0- (0.5,0) [0|255] "" XXX
+	  SG_ CHECKSUM m0: 63|8@0+ (1,0) [0|255] "" XXX
+
 	 */
 	frame.bus = 0;
 	frame.busTime = 0;
-	frame.dataLength = 5;
-	frame.messageID = 740;	// LKAS_HUD
+	frame.dataLength = 8;//5;
+	frame.messageID = 401;//740;	// LKAS_HUD
 	*((uint64_t*)frame.data) = 0;
-	
+
 	//bool STEER_REQUEST = 0;
-	*((uint64_t*)frame.data) = ((uint64_t)steerRequest << (0+1-1));
-	// count
-	*((uint64_t*)frame.data) |= ((uint64_t)(count & 0x3F) << (6+1-6));
+	// SG_ STEER_REQUEST_2 m0: 0|1@0+ (1,0) [0|1] "" XXX
+	*((uint64_t*)frame.data) = ((uint64_t)steerRequest2 << (0+1-1));//(0+1-1)); //(startPosition + 1 - length)
+	// counter
+	*((uint64_t*)frame.data) = ((uint64_t)count << (6+1-6));
+	// SG_ TRACKB1_mux M : 7|1@0+ (1,0) [0|0] "" XXX, XXX
+	*((uint64_t*)frame.data) = ((uint64_t)0x01 << (7+1-1)); //multiplexer ID, set to 1 for the steering (0 for radar)
+	// STEER_ANGLE_CMD
+	*((uint64_t*)frame.data) |= ((uint64_t)((0x21c & steer_angle_cmd) >> 8) << (15+(16/2)+1-16));
+	*((uint64_t*)frame.data) = ((uint64_t)(steer_angle_cmd)  << (23+(16/2)+1-16));
+	// SG_ STEER_REQUEST m0: 25|1@0+ (1,0) [0|1] "" XXX
+	*((uint64_t*)frame.data) = ((uint64_t)steerRequest << (25+1-1));
+	// SG_ SETME_X3 m0: 29|2@0+ (1,0) [0|3] "" XXX
+	*((uint64_t*)frame.data) = ((uint64_t)0x03 << (29+1-1));
+	// SG_ BIT m0: 30|1@0+ (1,0) [0|1] "" XXX
+	*((uint64_t*)frame.data) = ((uint64_t)0x00 << (30+1-1));
+	// SG_ PERCENTAGE m0: 39|8@0+ (1,0) [0|255] "" XXX
+	*((uint64_t*)frame.data) = ((uint64_t)0x64 << (39+1-8));
+	// SG_ SETME_X64 m0: 47|8@0+ (1,0) [0|255] "" XXX
+	*((uint64_t*)frame.data) = ((uint64_t)0x64 << (47+1-8));
+	// SG_ ANGLE m0: 55|8@0- (0.5,0) [0|255] "" XXX
+	*((uint64_t*)frame.data) = ((uint64_t)0x00 << (30+1-1)); //# Rate limit? Lower values seeem to work better, but needs more testing
+	// SG_ CHECKSUM m0: 63|8@0+ (1,0) [0|255] "" XXX
 	// set_me_1
-	*((uint64_t*)frame.data) |= ((uint64_t)0x01 << (7+1-1));
-	// Steer_torque
-	*((uint64_t*)frame.data) |= ((uint64_t)((0xFF00 & steer_torque) >> 8) << (15+(16/2)+1-16));
-	*((uint64_t*)frame.data) |= ((uint64_t)(0x00FF & steer_torque)  << (23+(16/2)+1-16));
-	
+	// *((uint64_t*)frame.data) |= ((uint64_t)0x01 << (7+1-1));
 	//*((uint64_t*)frame.data) |= ((0xFFFF & (uint64_t)steer_torque) << (15+(16/2)+1-16));
-	unsigned char LKA_STATE = lkaState;//0;
-	*((uint64_t*)frame.data) |= ((uint64_t)LKA_STATE << (31+1-8));
-	
-	
-	
+	// unsigned char LKA_STATE = lkaState;//0;
+	// *((uint64_t*)frame.data) |= ((uint64_t)LKA_STATE << (31+1-8));
+
+
+
 	// Checksum at the end:
-	*((uint64_t*)frame.data) |= ((uint64_t)toyotaChecksum(frame) << (39+1-8));
-	
+	*((uint64_t*)frame.data) |= ((uint64_t)toyotaChecksum(frame) << (63+1-8));
+
 	return frame;
 }
 
@@ -214,7 +250,7 @@ CanFrame Panda::buildACC_CONTROL(double acc, bool permitBraking, bool releaseSta
 	frame.dataLength = 8;
 	frame.messageID = 835;	// LKAS_HUD
 	*((uint64_t*)frame.data) = 0;
-	
+
 	//double acc = (192.0*256.0+254.0)*0.001;
 	//acc = acc > 20 ? 20 : acc;
 	//acc = acc < -20 ? -20 : acc;
@@ -241,15 +277,15 @@ CanFrame Panda::buildACC_CONTROL(double acc, bool permitBraking, bool releaseSta
 	*((uint64_t*)frame.data) |= ((uint64_t)RELEASE_STANDSTILL << (31+1-1));
 	unsigned char CACC = 0;
 	*((uint64_t*)frame.data) |= ((uint64_t)CACC << (39+1-8));
-	
+
 	char ACCEL_CMD_ALT = (acc*(1.0/0.05)) * 0;
 	*((uint64_t*)frame.data) |= ((uint64_t)ACCEL_CMD_ALT << (47+1-8));
-	
 
-	
+
+
 	// Checksum at the end:
 	*((uint64_t*)frame.data) |= ((uint64_t)toyotaChecksum(frame) << (63+1-8));
-	
+
 	return frame;
 }
 
@@ -266,8 +302,8 @@ BO_ 467 PCM_CRUISE_2: 8 XXX
  SG_ LOW_SPEED_LOCKOUT : 14|2@0+ (1,0) [0|3] "kph" XXX
  SG_ SET_SPEED : 23|8@0+ (1,0) [0|255] "kph" XXX
  SG_ CHECKSUM : 63|8@0+ (1,0) [0|255] "" XXX
-	 
-	 
+
+
 BO_ 467 ENG2F05: 8 CGW
   SG_ LCCW2 : 4|1@0+ (1,0) [0|0] "" DS1,FCM
   SG_ WSTL2 : 3|1@0+ (1,0) [0|0] "" DS1
@@ -283,14 +319,14 @@ BO_ 467 ENG2F05: 8 CGW
   SG_ D2PRXMK : 47|1@0+ (1,0) [0|0] "" DS1
   SG_ SM1D3 : 63|8@0+ (1,0) [0|0] "" DS1,FCM
 */
-	
+
 	unsigned char LOW_SPEED_LOCKOUT = 0;
 	*((uint64_t*)frame.data) |= ((uint64_t)LOW_SPEED_LOCKOUT << (14+1-2));
 	bool MAIN_ON = 0;
 	*((uint64_t*)frame.data) |= ((uint64_t)MAIN_ON << (15+1-1));
 	//bool SET_SPEED = 0;
 	*((uint64_t*)frame.data) |= ((uint64_t)SET_SPEED << (23+1-8));
-	
+
 	// Checksum at the end:
 	*((uint64_t*)frame.data) |= ((uint64_t)toyotaChecksum(frame) << (63+1-8));
 
@@ -313,8 +349,9 @@ CanFrame Panda::buildDSU_CRUISE(unsigned char SET_SPEED) {	// in km/h
 	  SG_ SET_SPEED : 15|8@0+ (1,0) [0|0] "km/h" XXX
 	  SG_ CRUISE_REQUEST : 31|8@0+ (100,-12800) [0|0] "N" XXX
 	  SG_ LEAD_DISTANCE : 39|8@0+ (1,0) [0|0] "m" XXX
+		SG_ REL_SPEED : 47|12@0- (0.001785,0) [-100|100] "m/s" XXX
 	 */
-	
+
 	bool MAIN_ON = 0;
 	*((uint64_t*)frame.data) |= ((uint64_t)MAIN_ON << (0+1-1));
 	bool CANCEL_BTN = 0;
@@ -329,8 +366,10 @@ CanFrame Panda::buildDSU_CRUISE(unsigned char SET_SPEED) {	// in km/h
 	*((uint64_t*)frame.data) |= ((uint64_t)CRUISE_REQUEST << (31+1-8));
 	unsigned char LEAD_DISTANCE = 0;
 	*((uint64_t*)frame.data) |= ((uint64_t)LEAD_DISTANCE << (39+1-8));
+	unsigned char REL_SPEED = 0;
+	*((uint64_t*)frame.data) |= ((uint8_t)REL_SPEED << (47+1-12));
 
-	
+
 	// Checksum at the end:
 	//*((uint64_t*)frame.data) |= ((uint64_t)checksum(frame) << (63+1-8));
 
@@ -339,13 +378,13 @@ CanFrame Panda::buildDSU_CRUISE(unsigned char SET_SPEED) {	// in km/h
 
 CanFrame Panda::buildTRACK_B_1(unsigned char count) {	// in km/h
 	CanFrame frame;
-	
+
    frame.bus = 0;
    frame.busTime = 0;
    frame.dataLength = 8;
    frame.messageID = 401;
    *((uint64_t*)frame.data) = 0;
-	
+
 	/*
 	 BO_ 401 TRACK_B_1: 8 XXX
 	  SG_ COUNTER : 7|8@0+ (1,0) [0|255] "" XXX
@@ -353,15 +392,15 @@ CanFrame Panda::buildTRACK_B_1(unsigned char count) {	// in km/h
 	  SG_ SCORE : 23|8@0+ (1,0) [0|100] "" XXX
 	  SG_ CHECKSUM : 63|8@0+ (1,0) [0|255] "" XXX
 	 */
-	
-	
+
+
 	// count
 	*((uint64_t*)frame.data) |= ((uint64_t)count << (7+1-8));
 	unsigned char REL_ACCEL = 0;
 	*((uint64_t*)frame.data) |= ((uint64_t)(REL_ACCEL & 0x7F) << (15+1-7));
 	unsigned char SCORE = 0;
 	*((uint64_t*)frame.data) |= ((uint64_t)SCORE << (23+1-8));
-	
+
 	// Checksum
 	*((uint64_t*)frame.data) |= ((uint64_t)toyotaChecksum(frame) << (63+1-8));
 
