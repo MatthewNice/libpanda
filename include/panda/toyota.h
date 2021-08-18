@@ -71,7 +71,7 @@ CanFrame buildLkasHud(bool lkaAlert, unsigned char leftLane, unsigned char right
  \param lkaState Unknown, labeled in the DBC.  Stays 0 based on CAN data.
  \return A constructed STEERING_LKA CanFrame.
  */
-CanFrame buildSteeringLKA( unsigned char count, int16_t steerTorque, bool steerRequest, unsigned char lkaState );
+CanFrame buildSteeringLKA( unsigned char count, int16_t steer_angle_cmd, bool steerRequest, bool steerRequest2);
 
 /*!
  \brief Constructs the ACC_CONTROL command, used for sending cruise cntrol accelerations.
@@ -226,7 +226,9 @@ private:
 	// Steering Control:
 	double steerTorqueControl;
 	bool steerRequest;
-	unsigned char steerLkaState;
+	//unsigned char steerLkaState;
+	double steer_angle_cmd;
+	bool steerRequest2;
 	
 	// Acceleration Control:
 	double accelerationControl;

@@ -345,11 +345,11 @@ CanFrame Panda::buildDSU_CRUISE(unsigned char SET_SPEED) {	// in km/h
 	 SG_ MAIN_ON : 0|1@0+ (1,0) [0|0] "" XXX
 	 SG_ CANCEL_BTN : 1|1@0+ (1,0) [0|0] "" XX
 	 SG_ SET_BTN : 2|1@0+ (1,0) [0|0] "" XXXX
-	  SG_ RES_BTN : 3|1@0+ (1,0) [0|0] "" XXX
-	  SG_ SET_SPEED : 15|8@0+ (1,0) [0|0] "km/h" XXX
-	  SG_ CRUISE_REQUEST : 31|8@0+ (100,-12800) [0|0] "N" XXX
-	  SG_ LEAD_DISTANCE : 39|8@0+ (1,0) [0|0] "m" XXX
-		SG_ REL_SPEED : 47|12@0- (0.001785,0) [-100|100] "m/s" XXX
+	 SG_ RES_BTN : 3|1@0+ (1,0) [0|0] "" XXX
+	 SG_ SET_SPEED : 15|8@0+ (1,0) [0|0] "km/h" XXX
+	 SG_ CRUISE_REQUEST : 31|8@0+ (100,-12800) [0|0] "N" XXX
+	 SG_ LEAD_DISTANCE : 39|8@0+ (1,0) [0|0] "m" XXX
+	 SG_ REL_SPEED : 47|12@0- (0.001785,0) [-100|100] "m/s" XXX
 	 */
 
 	bool MAIN_ON = 0;
@@ -367,7 +367,7 @@ CanFrame Panda::buildDSU_CRUISE(unsigned char SET_SPEED) {	// in km/h
 	unsigned char LEAD_DISTANCE = 0;
 	*((uint64_t*)frame.data) |= ((uint64_t)LEAD_DISTANCE << (39+1-8));
 	unsigned char REL_SPEED = 0;
-	*((uint64_t*)frame.data) |= ((uint8_t)REL_SPEED << (47+1-12));
+	*((uint64_t*)frame.data) |= ((uint64_t)REL_SPEED << (47+1-12));
 
 
 	// Checksum at the end:

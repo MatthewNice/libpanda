@@ -35,12 +35,12 @@ ToyotaHandler::ToyotaHandler(Panda::Handler* handler) {
 
 	controls_allowed_prior = false;
 	controls_allowed = false;
-<<<<<<< Updated upstream
+//<<<<<<< Updated upstream
 	controls_allowed_delay_counter = 0;
 	
-=======
+//=======
 
->>>>>>> Stashed changes
+//>>>>>>> Stashed changes
 	decimatorHeartbeat = 0;
 	decimatorControlsAllowed = 0;
 	decimatorLka = 0;
@@ -173,15 +173,15 @@ void ToyotaHandler::exitAction() {
 }
 
 void ToyotaHandler::doAction() {
-<<<<<<< Updated upstream
+//<<<<<<< Updated upstream
 //	usleep(1000000.0/TOYOTA_COMMAND_THREAD_RATE);	// run at 600 Hz
 	
 	auto start = std::chrono::high_resolution_clock::now();
 	
-=======
+//=======
 	usleep(1000000.0/TOYOTA_COMMAND_THREAD_RATE);	// run at 600 Hz
 
->>>>>>> Stashed changes
+//>>>>>>> Stashed changes
 	// We cannot have integer rollovers here at anytime, so only increase if not already failed
 	if(heartbeatSteeringPass()) {
 		heartBeatSteer++;
@@ -307,20 +307,20 @@ void ToyotaHandler::sendTrackB() {
 }
 
 void ToyotaHandler::sendSteer() {
-	int steerTorqueControlToSend;
+	int steer_angle_cmd;
 	// Only send torque if both 1. controls are allowed and 2. the heartbeat passes.
 	// If either of the above two fail, then send 0 torque
 //	if (health.controls_allowed && heartbeatSteeringPass()) {
 	if (controls_allowed && heartbeatSteeringPass()) {
 		steerRequest = true;
 		//steerLkaState = 0; // Real LKA steering control data shows this to be 0
-		steerTorqueControlToSend = steer_angle_cmd;	// Send the user steer torque
+		steer_angle_cmd = 10;	// Send the user steer torque
 	} else {
 		steerRequest = false;
-		steerTorqueControlToSend = 0;	// This may not be needed, but is following the same convention as ACC control
+		steer_angle_cmd = 0;	// This may not be needed, but is following the same convention as ACC control
 	}
 
-	Panda::CanFrame frame = buildSteeringLKA( counterSteer++, steerTorqueControlToSend, steerRequest, steerRequest2 );
+	Panda::CanFrame frame = buildSteeringLKA( counterSteer++, steer_angle_cmd, steerRequest, steerRequest2);
 	//printf("STEERING_LKA at %d: ", (int) steer_torque); printFrame(frame);
 	pandaHandler->getCan().sendMessage(frame);
 }
